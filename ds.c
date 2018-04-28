@@ -1,8 +1,8 @@
+#include "ucp.h"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-#include "ucp.h"
 
 
 #define MAX_PER_TASKS 13
@@ -61,18 +61,24 @@ typedef struct {
 /* ----------------------------------------------------------	functions ------------------------------------------	*/
 
 void resetEventsList(periodicEvent *perEventsList, aperiodicEvent *aperEventsList);
-
 void fillEventsList(unsigned int time, int type, periodicEvent *perEventsList, aperiodicEvent *aperEventsList,unsigned int simulationTime, TASK_PER task_per, TASK_APER task_aper, int ind);
-
-void runDeferrableServer(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, unsigned int simulationTime, READY_LIST readyList);
-
-TASK scheduler(READY_LIST readyList, unsigned int time, periodicEvent *perEventsList)
+void updateReadyList(unsigned int time, periodicEvent *perEventsList, aperiodicEvent *aperEventsList, READY_LIST readyList, unsigned int numPerTasks, unsigned int numAperTasks);
+TASK_PER getMostPriorityPeriodicTask(READY_LIST readyList, unsigned int numPerTasks);
+int aperiodicArrival(READY_LIST readyList, unsigned int numAperTasks);
+int checkDsPriority(periodicEvent *perEventsList, TASK_PER mostPriorityPeriodicTask, unsigned int time);
+int checkDsComputation(periodicEvent *perEventsList, unsigned int time);
+int checkPeriodicComputation(TASK_PER mostPriorityPeriodicTask);
+TASK scheduler(READY_LIST readyList, unsigned int time, periodicEvent *perEventsList, aperiodicEvent *aperEventsList, unsigned int numPerTasks, unsigned int numAperTasks);
+int checkPeriodicPer(periodicEvent perEventsList, unsigned int j);
+void updateTasksInformations(unsigned int time, periodicEvent *perEventsList, READY_LIST readyList, TASK_PER *auxPerTask, unsigned int simulationTime, unsigned int numPerTasks);
+void runSimulator(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, unsigned int simulationTime, READY_LIST readyList, TASK_PER *auxPerTask, TASK_APER *auxAperTask, unsigned int numPerTasks, unsigned int numAperTasks);
 
 /* ----------------------------------------------------------------------------------------------------------------------*/
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void resetEventsList(periodicEvent *perEventsList, aperiodicEvent *aperEventsList) {
+	
 	unsigned int i;
 	unsigned int j;
 
@@ -108,9 +114,10 @@ void fillEventsList(unsigned int time, int type, periodicEvent *perEventsList, a
 				}*/
 
 			break;
-		case aperiodic: 
-				//Time = tempo de chegada
-				aperEventsList[time].taskAper[ind] = task_aper; 	
+		case aperiodic:  //Time = tempo de chegada 		
+				for(i = time; i < simulationTime; i++) {
+					aperEventsList[time].taskAper[ind] = task_aper;
+				}	
 				
 			break;
 		default:
@@ -120,23 +127,23 @@ void fillEventsList(unsigned int time, int type, periodicEvent *perEventsList, a
 
 }
 
-void updateReadyList(unsigned int time, periodicEvent *perEventsList, aperiodicEvent *aperEventsList, READY_LIST readyList) {
+void updateReadyList(unsigned int time, periodicEvent *perEventsList, aperiodicEvent *aperEventsList, READY_LIST readyList, unsigned int numPerTasks, unsigned int numAperTasks) {
 	
 	unsigned int i;
 
 	//PREENCHE LISTA DE PRONTOS COM OS EVENTOS QUE ESTAO CHEGANDO NO TEMPO ATUAL
-	for(i = 0; i < MAX_PER_TASKS+1; i++) {	
+	for(i = 0; i < numPerTasks+1; i++) {	
 		readyList.taskPer[i] = perEventsList[time].taskPer[i];
 	}
 
 	
-	for(i = 0; i < MAX_APER_TASKS; i++) {
+	for(i = 0; i < numAperTasks; i++) {
 		readyList.taskAper[i] = aperEventsList[time].taskAper[i];
 	}
 
 }
 
-TASK_PER getMostPriorityPeriodicTask(readyList) {
+TASK_PER getMostPriorityPeriodicTask(READY_LIST readyList, unsigned int numPerTasks) {
 	
 	unsigned int i;
 	TASK_PER auxTask;
@@ -144,7 +151,7 @@ TASK_PER getMostPriorityPeriodicTask(readyList) {
 	auxTask.p = MAX_PERIOD;
 
 	//PEGA A TAREFA PERIODICACOM MAIOR PRIORIDADE, OU SEJA, A TAREFA COM O MENOR PERÍODO
-	for(i = 1; i < MAX_PER_TASKS+1; i++) {
+	for(i = 1; i < numPerTasks+1; i++) {
 		if(auxTask.p > readyList.taskPer[i].p && readyList.taskPer[i].p > 0 ) {
 			auxTask = readyList.taskPer[i];
 		}		
@@ -154,12 +161,12 @@ TASK_PER getMostPriorityPeriodicTask(readyList) {
 
 }
 
-int aperiodicArrival(readyList) {
+int aperiodicArrival(READY_LIST readyList, unsigned int numAperTasks) {
 
 	unsigned int i;
 	TASK_APER auxTask;
 
-	for(i  = 0; i < MAX_APER_TASKS; i++) {
+	for(i  = 0; i < numAperTasks; i++) {
 		if(readyList.taskAper[i].a > 0) { //Vefirifica se existe alguma aperiodica chegando no tempo atual
 			return 1;
 		}
@@ -199,16 +206,16 @@ int checkPeriodicComputation(TASK_PER mostPriorityPeriodicTask) {
 }
 
 
-TASK scheduler(READY_LIST readyList, unsigned int time, periodicEvent *perEventsList) {
+TASK scheduler(READY_LIST readyList, unsigned int time, periodicEvent *perEventsList, aperiodicEvent *aperEventsList, unsigned int numPerTasks, unsigned int numAperTasks) {
 
 	unsigned int i;
 	TASK_PER mostPriorityPeriodicTask;
 	TASK_APER mostPriorityAperiodicTask;
 	TASK taskToExecute;
 
-	mostPriorityPeriodicTask = getMostPriorityPeriodicTask(readyList);
+	mostPriorityPeriodicTask = getMostPriorityPeriodicTask(readyList, numPerTasks);
 	
-	if(aperiodicArrival(readyList)){ //SE ESTÁ CHEGANDO UMA APERIÓDICA NO TEMPO ATUAL
+	if(aperiodicArrival(readyList, numAperTasks)){ //SE ESTÁ CHEGANDO UMA APERIÓDICA NO TEMPO ATUAL
 		
 		if(checkDsPriority(perEventsList, mostPriorityPeriodicTask, time)){ //SE O DS É A TAREFA PERIÓDICA MAIS PRIORITÁRIA
 		
@@ -239,34 +246,34 @@ TASK scheduler(READY_LIST readyList, unsigned int time, periodicEvent *perEvents
 
 }
 
-int checkPeriodicPer(eventsList *perEventsList, unsigned int time){
-	unsigned int i;
+int checkPeriodicPer(periodicEvent perEventsList, unsigned int j){
 
-	
-	if(perEventsList[0].taskPer[time].p > 0) {
+	if(perEventsList.taskPer[j].p > 1) {
 		return 1;
 	}		
 
 	return 0;
 }
 
-void updateTasksInformations(unsigned int time, periodicEvent *perEventsList, READY_LIST readyList, TASK_PER *auxPerTask) {
+void updateTasksInformations(unsigned int time, periodicEvent *perEventsList, READY_LIST readyList, TASK_PER *auxPerTask, unsigned int simulationTime, unsigned int numPerTasks) {
 
 	unsigned int i;
+	unsigned int j;
 
-	for(i = 0; t < MAX_PER_TASKS+1; i++){
-		
-		if(checkPeriodicPer(perEventsList, i)) { //SE O PERÍODO AINDA NAO ACABOU, DECREMENTA
-			perEventsList[0].taskPer[i].p--;	
-		
-		} else {	//SE ACABOU, COMEÇA NOVO PERÍODO
-			perEventsList[0].taskPer[i] = auxPerTask[i];
+	for(i = time; i < simulationTime; i++){
+		for(j = 0; j < numPerTasks+1; j++) {
+			if(checkPeriodicPer(perEventsList[i], j)) { //SE O PERÍODO AINDA NAO ACABOU, DECREMENTA
+				perEventsList[i].taskPer[j].p--;	
+			
+			} else {	//SE ACABOU, COMEÇA NOVO PERÍODO
+				perEventsList[i].taskPer[j] = auxPerTask[j];
+			}
 		}
 	}
 }
 
 
-void runSimulator(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, unsigned int simulationTime, READY_LIST readyList, TASK_PER *auxPerTask, TASK_APER *auxAperTask) {
+void runSimulator(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, unsigned int simulationTime, READY_LIST readyList, TASK_PER *auxPerTask, TASK_APER *auxAperTask, unsigned int numPerTasks, unsigned int numAperTasks) {
 
 	unsigned int ind = 0;
 	unsigned int time;
@@ -279,10 +286,10 @@ void runSimulator(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, 
 
 	ucp = ucpNew(MAX_TIME);
 
-	for(time = 0; time < simulationTime; time++) {
+	for(time = 0; time < simulationTime; time++) {	//RELÓGIO CONTANDO
 		
-		updateReadyList(time, perEventsList, aperEventsList, readyList);	
-		taskToExecute = scheduler(readyList, time, perEventsList);		//PEGA A TAREFA QUE SERÁ EXECUTADA
+		updateReadyList(time, perEventsList, aperEventsList, readyList, numPerTasks, numAperTasks);	
+		taskToExecute = scheduler(readyList, time, perEventsList, aperEventsList, numPerTasks, numAperTasks);		//PEGA A TAREFA QUE SERÁ EXECUTADA
 		
 		//ucp = ucpNew(MAX_TIME);
 
@@ -291,13 +298,13 @@ void runSimulator(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, 
 						ucpLoad(ucp, taskToExecute.taskPer.pid, ('A' + taskToExecute.taskPer.pid), taskToExecute.taskPer.c, taskToExecute.taskPer.d);
 						ucpRun(ucp);
 
-						perEventsList[0].taskPer[time].c = ucp.comput;
+						perEventsList[0].taskPer[time].c = ucp->comput;
 				break;
 			case aperiodic:
 						ucpLoad(ucp, taskToExecute.taskAper.pid, ('A' + taskToExecute.taskAper.pid), taskToExecute.taskPer.c, taskToExecute.taskPer.d);
 						ucpRun(ucp);
 
-						aperEventsList[time].taskAper[0].c = ucp.comput;
+						aperEventsList[time].taskAper[0].c = ucp->comput;
 						(perEventsList[time].taskPer[0].c)--;
 						
 				break;
@@ -307,7 +314,7 @@ void runSimulator(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, 
 
 		}
 				
-		updateTasksInformations(time, perEventsList, readyList, auxPerTask);
+		updateTasksInformations(time, perEventsList, readyList, auxPerTask, simulationTime, numPerTasks);
 
 	}
 
@@ -341,8 +348,6 @@ int main() {
     	/* LEITURA */
    		scanf("%u%u%u",&sim_time,&numPerTasks,&numAperTasks);
 
-		//eventsList = (Event *)malloc(sim_time*sizeof(Event));
-
     	if (sim_time==0 && numPerTasks==0 && numAperTasks==0) {
        		break;
 		}
@@ -371,7 +376,7 @@ int main() {
     	}
     
 
-    	runSimulator(perEventsList, aperEventsList, sim_time, readyList,a auxPerTask, auxAperTask);
+    	runSimulator(perEventsList, aperEventsList, sim_time, readyList, auxPerTask, auxAperTask, numPerTasks, numAperTasks);
 
 		//fillEventList();
 		
