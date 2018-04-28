@@ -66,9 +66,7 @@ void fillEventsList(unsigned int time, int type, periodicEvent *perEventsList, a
 
 void runDeferrableServer(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, unsigned int simulationTime, READY_LIST readyList);
 
-//periodicEvent getPeriodicEvent(periodicEvent *perEventsList, ind);
-
-void scheduler();
+TASK scheduler(READY_LIST readyList, unsigned int time, periodicEvent *perEventsList)
 
 /* ----------------------------------------------------------------------------------------------------------------------*/
 
