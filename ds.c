@@ -239,6 +239,33 @@ TASK scheduler(READY_LIST readyList, unsigned int time, periodicEvent *perEvents
 
 }
 
+int checkPeriodicPer(eventsList *perEventsList, unsigned int time){
+	unsigned int i;
+
+	
+	if(perEventsList[0].taskPer[time].p > 0) {
+		return 1;
+	}		
+
+	return 0;
+}
+
+void updateTasksInformations(unsigned int time, periodicEvent *perEventsList, READY_LIST readyList, TASK_PER *auxPerTask) {
+
+	unsigned int i;
+
+	for(i = 0; t < MAX_PER_TASKS+1; i++){
+		
+		if(checkPeriodicPer(perEventsList, i)) { //SE O PERÍODO AINDA NAO ACABOU, DECREMENTA
+			perEventsList[0].taskPer[i].p--;	
+		
+		} else {	//SE ACABOU, COMEÇA NOVO PERÍODO
+			perEventsList[0].taskPer[i] = auxPerTask[i];
+		}
+	}
+}
+
+
 void runSimulator(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, unsigned int simulationTime, READY_LIST readyList, TASK_PER *auxPerTask, TASK_APER *auxAperTask) {
 
 	unsigned int ind = 0;
@@ -250,19 +277,21 @@ void runSimulator(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, 
 	
 	ucp_t *ucp;
 
-	//ucp = ucpNew(MAX_TIME);
+	ucp = ucpNew(MAX_TIME);
 
 	for(time = 0; time < simulationTime; time++) {
 		
 		updateReadyList(time, perEventsList, aperEventsList, readyList);	
 		taskToExecute = scheduler(readyList, time, perEventsList);		//PEGA A TAREFA QUE SERÁ EXECUTADA
 		
-		ucp = ucpNew(MAX_TIME);
+		//ucp = ucpNew(MAX_TIME);
 
 		switch(taskToExecute.type){
 			case periodic:
 						ucpLoad(ucp, taskToExecute.taskPer.pid, ('A' + taskToExecute.taskPer.pid), taskToExecute.taskPer.c, taskToExecute.taskPer.d);
 						ucpRun(ucp);
+
+						perEventsList[0].taskPer[time].c = ucp.comput;
 				break;
 			case aperiodic:
 						ucpLoad(ucp, taskToExecute.taskAper.pid, ('A' + taskToExecute.taskAper.pid), taskToExecute.taskPer.c, taskToExecute.taskPer.d);
@@ -277,7 +306,9 @@ void runSimulator(periodicEvent *perEventsList, aperiodicEvent *aperEventsList, 
 				break;
 
 		}
-		
+				
+		updateTasksInformations(time, perEventsList, readyList, auxPerTask);
+
 	}
 
 }
@@ -319,13 +350,16 @@ int main() {
     	resetEventsList(perEventsList, aperEventsList);
 
     	scanf("%u%u%u",&ds.c,&ds.p,&ds.d);
+    	perTasks[0].pid = 0;
+		auxPerTask[0] = ds;
     	fillEventsList(ds.p, periodic, perEventsList, aperEventsList, sim_time, ds, aperTasks[0], 0);
 
-   		for (i=0;i<numPerTasks;++i) {
+
+   		for (i=1;i<numPerTasks;++i) {
         	scanf("%u%u%u",&perTasks[i].c,&perTasks[i].p,&perTasks[i].d);
 			perTasks[i].pid = i;
 			auxPerTask[i] = perTasks[i];
-			fillEventsList(perTasks[i].p, periodic, perEventsList, aperEventsList, sim_time, perTasks[i], aperTasks[0], i+1);
+			fillEventsList(perTasks[i].p, periodic, perEventsList, aperEventsList, sim_time, perTasks[i], aperTasks[0], i);
     		indAux++;
     	}
 
