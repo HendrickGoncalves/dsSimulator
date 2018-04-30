@@ -54,7 +54,7 @@ void ucpLoad(ucp_t *ucp, int pid,char symbol, int c,int deadline)
 void ucpRun(ucp_t *ucp)
 {
 	if	(ucp!=NULL && ucp->pid!=-1) {
-        if(ucp->deadline!=-1 && ucp->tempo>=ucp->deadline)
+        if(ucp->deadline != -1 && ucp->tempo >= ucp->deadline)
 			ucp->grid[ucp->tempo] = tolower(ucp->symbol);
 		else
 			ucp->grid[ucp->tempo] = ucp->symbol;

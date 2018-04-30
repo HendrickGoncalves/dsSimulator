@@ -71,7 +71,6 @@ void resetSimulator(READY_LIST *readyList, char *grid, unsigned int *numPreemp, 
 
 	for(i = 0; i < MAX_TIME+1; i++) {
 		grid[i] = '.';
-		printf("GRID:%c", grid[i]);
 	}
 
 	*numPreemp = 0;
@@ -277,10 +276,9 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						ucpRun(ucp);
 
 						readyList->taskPer[taskToExecute.taskPer.pid].c = ucp->comput;
-						//grade[time] = ucp->symbol;
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;
-						printf("GRID PERIODIC: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);						
+						//printf("GRID PERIODIC: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);						
 				break;
 			case aperiodic:
 						ucpLoad(ucp, taskToExecute.taskAper.pid, taskToExecute.taskAper.symbol, taskToExecute.taskPer.c, taskToExecute.taskPer.d);
@@ -288,21 +286,20 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						
 						readyList->taskAper[taskToExecute.taskAper.pid].c = ucp->comput;
 						readyList->taskPer[taskToExecute.taskPer.pid].c--;
-						//grade[time] = ucp->symbol;
+
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
 
-						printf("GRID APERIODIC: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);
+						//printf("GRID APERIODIC: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);
 				break;
 			case idle:
 						ucpLoad(ucp, 26+1, '.', 1, 0);
 						ucpRun(ucp);
 						
-						//grade[time] = '.';
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
 
-						printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);
+						//printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);
 				break;
 				
 			default:
@@ -314,9 +311,7 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 		
 	}
 	strcpy(grade, ucp->grid);
-	ucpFree(&ucp);
-	
-	printf("DEBUG GRID: %c\n", grade[1]);
+	ucpFree(&ucp);	
 
 }
 
