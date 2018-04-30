@@ -33,7 +33,7 @@ void ucpLoad(ucp_t *ucp, int pid,char symbol, int c,int deadline)
 {
 //printf("UCP/LOAD: %d - %c - %d [ucp->comput=%d]\n",pid,symbol,c,ucp->comput);
 	ucp->symbol = symbol;	
-        ucp->deadline = deadline;
+    ucp->deadline = deadline;
 	if	(ucp->pid==-1) {
 		ucp->pid = pid;
 		ucp->comput = c;

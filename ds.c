@@ -95,7 +95,7 @@ void fillReadyList(unsigned int ind, READY_LIST *readyList, int type, TASK_PER t
 
 }
 
-TASK_PER getMostPriorityPeriodicTask(READY_LIST *readyList, unsigned int numPerTasks) {
+TASK_PER getMostPriorityPeriodicTask(READY_LIST *readyList, unsigned int numPerTasks, TASK_PER *auxPerTask) {
 	
 	unsigned int i;
 	TASK_PER auxTask;
@@ -104,19 +104,29 @@ TASK_PER getMostPriorityPeriodicTask(READY_LIST *readyList, unsigned int numPerT
 
 	//PEGA A TAREFA PERIODICACOM MAIOR PRIORIDADE, OU SEJA, A TAREFA COM O MENOR PERÍODO
 	for(i = 1; i < numPerTasks+1; i++) {
-		if(auxTask.p > (readyList->taskPer[i].p) && (readyList->taskPer[i].p) > 0 && readyList->taskPer[i].c > 0) {
-			auxTask = readyList->taskPer[i];
+		//printf("DEBUG DA PERIODICA MAIS PRIORITARIA: p %u, c %u\n", auxPerTask[i].p, readyList->taskPer[i].c);
+		if(auxTask.p > auxPerTask[i].p && auxPerTask[i].p > 0 && readyList->taskPer[i].c > 0) {
+			
+			auxTask.p = auxPerTask[i].p;
+			auxTask.symbol = auxPerTask[i].symbol;
+			auxTask.pid = auxPerTask[i].pid;
+			
+			auxTask.d = readyList->taskPer[i].d;
+			printf("DEBUG DEADLINE: %u\n", auxTask.d);
+			auxTask.c = readyList->taskPer[i].c;
 		}		
 	}
 	
 	if(auxTask.p == MAX_PERIOD) {
-		auxTask.p = 0;
+	//	auxTask.p = 0;
 		auxTask.c = 0;
 	}
 	
+	//printf("DEBUG PERIODO DO MAIS PRIORITARIO: %u\n", auxTask.p);
 	return auxTask;
 
 }
+
 TASK_APER getMostPriorityAperiodicTask(READY_LIST *readyList, unsigned int numAperTasks) {
 	
 	unsigned int i;
@@ -132,13 +142,26 @@ TASK_APER getMostPriorityAperiodicTask(READY_LIST *readyList, unsigned int numAp
 	return readyList->taskAper[0];
 }
 
+void updateAFifoAperiodic(READY_LIST *readyList, unsigned int numAperTasks, TASK_APER *auxAperTask) {
+	
+	unsigned int i;
+	
+	for(i = 0; i < numAperTasks; i++) { //UPDATE FIFO
+		if(i < numAperTasks-1){		
+			readyList->taskAper[i] = readyList->taskAper[i+1];			
+			auxAperTask[i] = auxAperTask[i+1];	
+		}						
+	}
+
+	//printf("DEBUG COMPUTAAÇÃO APERIODICA: %u\n", readyList->taskAper[0].c);
+}
+
 int aperiodicArrival(READY_LIST *readyList, unsigned int numAperTasks, unsigned int time) {
 
 	unsigned int i;
 
 	for(i  = 0; i < numAperTasks; i++) {
 		if(readyList->taskAper[i].a == time && readyList->taskAper[i].c > 0) { //Vefirifica se existe alguma aperiodica chegando no tempo atual
-			//printf("DEBUG taskAper: %c, %u\n", readyList->taskAper[i].symbol, readyList->taskAper[i].c);			
 			return 1;
 		}
 	}
@@ -147,9 +170,9 @@ int aperiodicArrival(READY_LIST *readyList, unsigned int numAperTasks, unsigned 
 	
 }
 
-int checkDsPriority(READY_LIST *readyList, TASK_PER mostPriorityPeriodicTask, unsigned int time) {
-
-	if(readyList->taskPer[0].p < mostPriorityPeriodicTask.p) {
+int checkDsPriority(TASK_PER *auxPerTask, TASK_PER mostPriorityPeriodicTask, unsigned int time) {
+	//printf("DEBUG PERIODO DS: %u, %u\n", auxPerTask[0].p, mostPriorityPeriodicTask.p);
+	if(auxPerTask[0].p < mostPriorityPeriodicTask.p) {
 		return 1;
 	}
 
@@ -159,6 +182,7 @@ int checkDsPriority(READY_LIST *readyList, TASK_PER mostPriorityPeriodicTask, un
 
 int checkDsComputation(READY_LIST *readyList, unsigned int time) {
 
+	//printf("DEBUG COMPUTAÇÃO DO DS: %u\n", readyList->taskPer[0].c);
 	if(readyList->taskPer[0].c > 0) {
 		return 1;
 	}
@@ -168,7 +192,7 @@ int checkDsComputation(READY_LIST *readyList, unsigned int time) {
 }
 
 int checkPeriodicComputation(TASK_PER mostPriorityPeriodicTask) {
-
+	//printf("DEBUG PERIODIC COMPUTATION: %u\n", mostPriorityPeriodicTask.c);
 	if(mostPriorityPeriodicTask.c > 0) {
 		return 1;
 	}	
@@ -176,36 +200,56 @@ int checkPeriodicComputation(TASK_PER mostPriorityPeriodicTask) {
 	return 0;
 }
 
+int chekAperiodicExecution(READY_LIST *readyList, unsigned int numAperTasks, unsigned int time, TASK_APER *auxAperTask){
+	//printf("DEBUG COMPUTATION APERIODIC: %u, %u\n", readyList->taskAper[0].c, auxAperTask[0].c);
+	if(readyList->taskAper[0].c < auxAperTask[0].c) { //SE A COMPUTAÇÃO DA TAREFA É MENOR DO QUE A COMPUTAÇÃO INICIAL, SIGNIFICA QUE ESTÁ EXECUTANDO E ESTÁ QUERENDO "ENTRAR"
+		return 1;
+	}
 
-TASK scheduler(READY_LIST *readyList, unsigned int time, unsigned int numPerTasks, unsigned int numAperTasks) {
+	return 0;
+}
+
+int checkAperiodicComputation(READY_LIST *readyList) {
+
+	if(readyList->taskAper[0].c > 0) {
+		return 1;
+	}
+
+	return 0;
+}
+
+TASK scheduler(READY_LIST *readyList, unsigned int time, unsigned int numPerTasks, unsigned int numAperTasks, TASK_APER *auxAperTask, TASK_PER *auxPerTask) {
 
 	TASK_PER mostPriorityPeriodicTask;
 	TASK taskToExecute;
 
-	mostPriorityPeriodicTask = getMostPriorityPeriodicTask(readyList, numPerTasks);
-	
-	if(aperiodicArrival(readyList, numAperTasks, time)){ //SE ESTÁ CHEGANDO UMA APERIÓDICA NO TEMPO ATUAL COM COMPUTAÇÃO DISPONÍVEL
+	mostPriorityPeriodicTask = getMostPriorityPeriodicTask(readyList, numPerTasks, auxPerTask);
+	//printf("\nDEBUG 2 MAIS PRIORIÁTIRIO: %u\n", mostPriorityPeriodicTask.p);
+	if(aperiodicArrival(readyList, numAperTasks, time) || chekAperiodicExecution(readyList, numAperTasks, time, auxAperTask)){ //SE ESTÁ CHEGANDO UMA APERIÓDICA NO TEMPO ATUAL COM COMPUTAÇÃO DISPONÍVEL
 		
-		if(checkDsPriority(readyList, mostPriorityPeriodicTask, time)){ //SE O DS É A TAREFA PERIÓDICA MAIS PRIORITÁRIA
-		
+		if(checkDsPriority(auxPerTask, mostPriorityPeriodicTask, time)){ //SE O DS É A TAREFA PERIÓDICA MAIS PRIORITÁRIA
+			
 			if(checkDsComputation(readyList, time)) {	//E SE O DS AINDA TEM COMPUTAÇÕES PARA FAZER
-				
+				//printf("\nDEBUG APERIODIC\n");	
 				taskToExecute.taskPer = readyList->taskPer[0];	//DS
-				taskToExecute.taskAper = getMostPriorityAperiodicTask(readyList, numAperTasks);	//FIFO		
+				taskToExecute.taskAper = readyList->taskAper[0];
 				taskToExecute.type = aperiodic;
 				
 			} else if(checkPeriodicComputation(mostPriorityPeriodicTask)) {	//SENÃO, SE A TAREFA PERIODICA MAIS PRIORITARIA AINDA TIVER COMPUTAÇÃO
-				
+				//printf("DEBUG PERIODIC COMPUTATION: %u\n", mostPriorityPeriodicTask.c);
 				taskToExecute.taskPer = mostPriorityPeriodicTask;
 				taskToExecute.type = periodic;
 			
-			} else {	//SENÃO EXECUTA A APERIODICA MESMO SEM COMPUTAÇÃO
-				
+			} else if(checkAperiodicComputation(readyList)){	//SENÃO EXECUTA A APERIODICA MESMO SEM COMPUTAÇÃO
+				//printf("DEBUG  CASO ESPECIFICO\n");
 				taskToExecute.taskPer = readyList->taskPer[0];	//DS
-				taskToExecute.taskAper = getMostPriorityAperiodicTask(readyList, numAperTasks);	//FIFO		
+				taskToExecute.taskAper = readyList->taskAper[0];	
 				taskToExecute.type = aperiodic;
+				//printf("DEBUG COMPUTAAÇÃO APERIODICA 2: %u\n", taskToExecute.taskAper.c);
 			
-			} 
+			} else {
+				taskToExecute.type = idle;	
+			}
 			
 		} else if(checkPeriodicComputation(mostPriorityPeriodicTask)) {	//SENÃO, SE A TAREFA PERIODICA MAIS PRIORITARIA AINDA TIVER COMPUTAÇÃO
 			
@@ -213,7 +257,7 @@ TASK scheduler(READY_LIST *readyList, unsigned int time, unsigned int numPerTask
 			taskToExecute.type = periodic;
 		
 		} else { 	//IDLE
-			
+			printf("DEBUG IDLE 1\n");
 			taskToExecute.type = idle;
 			
 		}
@@ -224,7 +268,7 @@ TASK scheduler(READY_LIST *readyList, unsigned int time, unsigned int numPerTask
 		taskToExecute.type = periodic;
 	
 	} else {	//IDLE
-		
+		printf("DEBUG IDLE 2\n");
 		taskToExecute.type = idle;
 	} 
 
@@ -250,7 +294,9 @@ void updateTasksInformations(unsigned int time, READY_LIST *readyList, TASK_PER 
 			readyList->taskPer[i].p--;	
 			
 		} else {	//SE ACABOU, COMEÇA NOVO PERÍODO
-				readyList->taskPer[i] = auxPerTask[i];
+				readyList->taskPer[i].c = auxPerTask[i].c;
+				readyList->taskPer[i].p = auxPerTask[i].p;
+				readyList->taskPer[i].d += auxPerTask[i].d; 
 		}
 	}
 }
@@ -267,30 +313,39 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 	ucp = ucpNew(MAX_TIME);
 
 	for(time = 0; time < simulationTime; time++) {	//RELÓGIO CONTANDO
-		
-		taskToExecute = scheduler(readyList, time, numPerTasks, numAperTasks);		//PEGA A TAREFA QUE SERÁ EXECUTADA
+		printf("TIME: %u\n", time);
+		taskToExecute = scheduler(readyList, time, numPerTasks, numAperTasks, auxAperTask, auxPerTask);		//PEGA A TAREFA QUE SERÁ EXECUTADA
 		
 		switch(taskToExecute.type){
 			case periodic:
+
 						ucpLoad(ucp, taskToExecute.taskPer.pid, taskToExecute.taskPer.symbol, taskToExecute.taskPer.c, taskToExecute.taskPer.d);
 						ucpRun(ucp);
 
 						readyList->taskPer[taskToExecute.taskPer.pid].c = ucp->comput;
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;
-						//printf("GRID PERIODIC: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);						
+						//printf("SYMBOL PERIODIC: %c, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskPer.symbol, *numPreemp, *numCntSw);						
 				break;
 			case aperiodic:
-						ucpLoad(ucp, taskToExecute.taskAper.pid, taskToExecute.taskAper.symbol, taskToExecute.taskPer.c, taskToExecute.taskPer.d);
+						ucpLoad(ucp, taskToExecute.taskAper.pid, taskToExecute.taskAper.symbol, taskToExecute.taskAper.c, taskToExecute.taskPer.d);
 						ucpRun(ucp);
-						
-						readyList->taskAper[taskToExecute.taskAper.pid].c = ucp->comput;
-						readyList->taskPer[taskToExecute.taskPer.pid].c--;
+
+						readyList->taskAper[0].c = ucp->comput;
+						if(readyList->taskAper[0].c == 0) { //TERMINOU A EXECUÇÃO DE UM APERIÓDICA ENTÃO, BUSCA A PRÓXIMA
+							updateAFifoAperiodic(readyList, numAperTasks, auxAperTask);
+						}
+
+						if(readyList->taskPer[0].c > 0){
+							readyList->taskPer[0].c--;
+						} else {
+							readyList->taskPer[0].c = 0;
+						}
 
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
 
-						//printf("GRID APERIODIC: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);
+						//printf("SYMBOL APERIODIC: %c, computation : %u, DEADLINE : %u, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskAper.symbol, readyList->taskAper[0].c, readyList->taskPer[0].d ,*numPreemp, *numCntSw);
 				break;
 			case idle:
 						ucpLoad(ucp, 26+1, '.', 1, 0);
@@ -299,7 +354,7 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
 
-						//printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);
+						//printf("SYMBOL IDLE: %c, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskAper.symbol, *numPreemp, *numCntSw);
 				break;
 				
 			default:
@@ -310,7 +365,9 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 		updateTasksInformations(time, readyList, auxPerTask, simulationTime, numPerTasks);
 		
 	}
+
 	strcpy(grade, ucp->grid);
+
 	ucpFree(&ucp);	
 
 }
