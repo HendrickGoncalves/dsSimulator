@@ -71,6 +71,7 @@ void resetSimulator(READY_LIST *readyList, char *grid, unsigned int *numPreemp, 
 
 	for(i = 0; i < MAX_TIME+1; i++) {
 		grid[i] = '.';
+		printf("GRID:%c", grid[i]);
 	}
 
 	*numPreemp = 0;
@@ -256,7 +257,7 @@ void updateTasksInformations(unsigned int time, READY_LIST *readyList, TASK_PER 
 }
 
 
-void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *auxPerTask, TASK_APER *auxAperTask, unsigned int numPerTasks, unsigned int numAperTasks, char *grid, unsigned int *numPreemp, unsigned int *numCntSw) {
+void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *auxPerTask, TASK_APER *auxAperTask, unsigned int numPerTasks, unsigned int numAperTasks, char *grade, unsigned int *numPreemp, unsigned int *numCntSw) {
 
 	unsigned int time;
 
@@ -267,20 +268,19 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 	ucp = ucpNew(MAX_TIME);
 
 	for(time = 0; time < simulationTime; time++) {	//RELÓGIO CONTANDO
+		
 		taskToExecute = scheduler(readyList, time, numPerTasks, numAperTasks);		//PEGA A TAREFA QUE SERÁ EXECUTADA
 		
-		//ucp = ucpNew(MAX_TIME);
-
 		switch(taskToExecute.type){
 			case periodic:
 						ucpLoad(ucp, taskToExecute.taskPer.pid, taskToExecute.taskPer.symbol, taskToExecute.taskPer.c, taskToExecute.taskPer.d);
 						ucpRun(ucp);
 
 						readyList->taskPer[taskToExecute.taskPer.pid].c = ucp->comput;
-						grid[time] = ucp->symbol;
+						//grade[time] = ucp->symbol;
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;
-						printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grid[time], *numPreemp, *numCntSw);						
+						printf("GRID PERIODIC: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);						
 				break;
 			case aperiodic:
 						ucpLoad(ucp, taskToExecute.taskAper.pid, taskToExecute.taskAper.symbol, taskToExecute.taskPer.c, taskToExecute.taskPer.d);
@@ -288,21 +288,21 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						
 						readyList->taskAper[taskToExecute.taskAper.pid].c = ucp->comput;
 						readyList->taskPer[taskToExecute.taskPer.pid].c--;
-						grid[time] = ucp->symbol;
+						//grade[time] = ucp->symbol;
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
 
-						printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grid[time], *numPreemp, *numCntSw);
+						printf("GRID APERIODIC: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);
 				break;
 			case idle:
 						ucpLoad(ucp, 26+1, '.', 1, 0);
 						ucpRun(ucp);
 						
-						grid[time] = '.';
+						//grade[time] = '.';
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
-						
-						printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grid[time], *numPreemp, *numCntSw);
+
+						printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grade[time], *numPreemp, *numCntSw);
 				break;
 				
 			default:
@@ -313,7 +313,10 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 		updateTasksInformations(time, readyList, auxPerTask, simulationTime, numPerTasks);
 		
 	}
+	strcpy(grade, ucp->grid);
 	ucpFree(&ucp);
+	
+	printf("DEBUG GRID: %c\n", grade[1]);
 
 }
 
@@ -366,21 +369,18 @@ int main() {
     	for (i=0;i<numAperTasks;i++) {
         	scanf("%u%u",&aperTasks[i].a,&aperTasks[i].c);
 			aperTasks[i].symbol = 'A' + (i+auxInd);
-			aperTasks[i].pid = i;
+			aperTasks[i].pid = (i+auxInd)+1;
 			auxAperTask[i] = aperTasks[i];
 			fillReadyList(i, &readyList, aperiodic, perTasks[0], aperTasks[i]);
     	}
     
 
     	runSimulator(sim_time, &readyList, auxPerTask, auxAperTask, numPerTasks, numAperTasks, grade, &numPreemp, &numCntSw);
-	    
-	    //strcpy(grade,"AAAABCBBBBAADAABBB..");
 
 	    /* SAIDA */
 	    
-	    for(i = 0; i < sim_time; i++){
-	    	printf("%c",grade[i]);
-	    }
+	    printf("%s\n", grade);
+	    
 	    printf("\n");
 	    printf("%u %u\n",numPreemp,numCntSw);
 	    printf("\n");
