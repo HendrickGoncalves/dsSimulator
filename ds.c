@@ -103,7 +103,7 @@ TASK_PER getMostPriorityPeriodicTask(READY_LIST *readyList, unsigned int numPerT
 
 	//PEGA A TAREFA PERIODICACOM MAIOR PRIORIDADE, OU SEJA, A TAREFA COM O MENOR PERÍODO
 	for(i = 1; i < numPerTasks+1; i++) {
-		if(auxTask.p > (readyList->taskPer[i].p) && (readyList->taskPer[i].p) > 0 && readyList->taskPer[i].c > 1) {
+		if(auxTask.p > (readyList->taskPer[i].p) && (readyList->taskPer[i].p) > 0 && readyList->taskPer[i].c > 0) {
 			auxTask = readyList->taskPer[i];
 		}		
 	}
@@ -111,13 +111,28 @@ TASK_PER getMostPriorityPeriodicTask(READY_LIST *readyList, unsigned int numPerT
 	return auxTask;
 
 }
+TASK_APER getMostPriorityAperiodicTask(READY_LIST *readyList, unsigned int numAperTasks) {
+	
+	unsigned int i;
+	
+	if(readyList->taskAper[0].c <= 0) {
+		for(i = 0; i < numAperTasks; i++) { //UPDATE FIFO
+			if(i < numAperTasks-1){		//1
+				readyList->taskAper[i] = readyList->taskAper[i+1];				
+			}						
+		}
+	}
+
+	return readyList->taskAper[0];
+}
 
 int aperiodicArrival(READY_LIST *readyList, unsigned int numAperTasks, unsigned int time) {
 
 	unsigned int i;
 
 	for(i  = 0; i < numAperTasks; i++) {
-		if(readyList->taskAper[i].a == time) { //Vefirifica se existe alguma aperiodica chegando no tempo atual
+		if(readyList->taskAper[i].a == time && readyList->taskAper[i].c > 0) { //Vefirifica se existe alguma aperiodica chegando no tempo atual
+			printf("DEBUG taskAper: %c, %u\n", readyList->taskAper[i].symbol, readyList->taskAper[i].c);			
 			return 1;
 		}
 	}
@@ -170,7 +185,8 @@ TASK scheduler(READY_LIST *readyList, unsigned int time, unsigned int numPerTask
 			if(checkDsComputation(readyList, time)) {	//E SE O DS AINDA TEM COMPUTAÇÕES PARA FAZER
 
 				taskToExecute.taskPer = readyList->taskPer[0];	//DS
-				taskToExecute.taskAper = readyList->taskAper[0]; //PRIMEIRA APERIODICA DA FILA  
+				//taskToExecute.taskAper = readyList->taskAper[0]; //PRIMEIRA APERIODICA DA FILA  
+				taskToExecute.taskAper = getMostPriorityAperiodicTask(readyList, numAperTasks);				
 				taskToExecute.type = aperiodic;
 				
 			} else if(checkPeriodicComputation(mostPriorityPeriodicTask)) {	//SENÃO, SE A TAREFA PERIODICA MAIS PRIORITARIA AINDA TIVER COMPUTAÇÃO
@@ -263,8 +279,9 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 		}
 				
 		updateTasksInformations(time, readyList, auxPerTask, simulationTime, numPerTasks);
-
+		
 	}
+	ucpFree(&ucp);
 
 }
 
