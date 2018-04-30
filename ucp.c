@@ -15,7 +15,7 @@ ucp_t *ucpNew(int gridSize)
 	if	(res==NULL)
 		return res;
 	res->pid = -1;
-        res->tempo = 0;
+    res->tempo = 0;
 	res->symbol = ' ';
 	res->numPreemp = 0;
 	res->numContSwitch = 0;
@@ -54,18 +54,18 @@ void ucpLoad(ucp_t *ucp, int pid,char symbol, int c,int deadline)
 void ucpRun(ucp_t *ucp)
 {
 	if	(ucp!=NULL && ucp->pid!=-1) {
-                if	(ucp->deadline!=-1 && ucp->tempo>=ucp->deadline)
+        if(ucp->deadline!=-1 && ucp->tempo>=ucp->deadline)
 			ucp->grid[ucp->tempo] = tolower(ucp->symbol);
 		else
 			ucp->grid[ucp->tempo] = ucp->symbol;
-                ucp->tempo++;
+        ucp->tempo++;
 		ucp->grid[ucp->tempo] = '\0';
 		ucp->comput--;
 //printf("UCP/RUN:  %s %u %u\n",ucp->grid,ucp->numPreemp,ucp->numContSwitch);
 	}
 	else {
 		ucp->grid[ucp->tempo] = '_';
-                ucp->tempo++;
+        ucp->tempo++;
 		ucp->grid[ucp->tempo] = '\0';
 	}
 }
