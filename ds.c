@@ -13,7 +13,8 @@
 
 enum TYPE_TASK {
 	periodic,
-	aperiodic
+	aperiodic,
+	idle
 };
 
 typedef struct {
@@ -69,7 +70,7 @@ void resetSimulator(READY_LIST *readyList, char *grid, unsigned int *numPreemp, 
 	}
 
 	for(i = 0; i < MAX_TIME+1; i++) {
-		grid[i] = '\0';
+		grid[i] = '.';
 	}
 
 	*numPreemp = 0;
@@ -107,7 +108,12 @@ TASK_PER getMostPriorityPeriodicTask(READY_LIST *readyList, unsigned int numPerT
 			auxTask = readyList->taskPer[i];
 		}		
 	}
-
+	
+	if(auxTask.p == MAX_PERIOD) {
+		auxTask.p = 0;
+		auxTask.c = 0;
+	}
+	
 	return auxTask;
 
 }
@@ -117,7 +123,7 @@ TASK_APER getMostPriorityAperiodicTask(READY_LIST *readyList, unsigned int numAp
 	
 	if(readyList->taskAper[0].c <= 0) {
 		for(i = 0; i < numAperTasks; i++) { //UPDATE FIFO
-			if(i < numAperTasks-1){		//1
+			if(i < numAperTasks-1){		
 				readyList->taskAper[i] = readyList->taskAper[i+1];				
 			}						
 		}
@@ -132,7 +138,7 @@ int aperiodicArrival(READY_LIST *readyList, unsigned int numAperTasks, unsigned 
 
 	for(i  = 0; i < numAperTasks; i++) {
 		if(readyList->taskAper[i].a == time && readyList->taskAper[i].c > 0) { //Vefirifica se existe alguma aperiodica chegando no tempo atual
-			printf("DEBUG taskAper: %c, %u\n", readyList->taskAper[i].symbol, readyList->taskAper[i].c);			
+			//printf("DEBUG taskAper: %c, %u\n", readyList->taskAper[i].symbol, readyList->taskAper[i].c);			
 			return 1;
 		}
 	}
@@ -178,33 +184,49 @@ TASK scheduler(READY_LIST *readyList, unsigned int time, unsigned int numPerTask
 
 	mostPriorityPeriodicTask = getMostPriorityPeriodicTask(readyList, numPerTasks);
 	
-	if(aperiodicArrival(readyList, numAperTasks, time)){ //SE ESTÁ CHEGANDO UMA APERIÓDICA NO TEMPO ATUAL
+	if(aperiodicArrival(readyList, numAperTasks, time)){ //SE ESTÁ CHEGANDO UMA APERIÓDICA NO TEMPO ATUAL COM COMPUTAÇÃO DISPONÍVEL
 		
 		if(checkDsPriority(readyList, mostPriorityPeriodicTask, time)){ //SE O DS É A TAREFA PERIÓDICA MAIS PRIORITÁRIA
 		
 			if(checkDsComputation(readyList, time)) {	//E SE O DS AINDA TEM COMPUTAÇÕES PARA FAZER
-
+				
 				taskToExecute.taskPer = readyList->taskPer[0];	//DS
-				//taskToExecute.taskAper = readyList->taskAper[0]; //PRIMEIRA APERIODICA DA FILA  
-				taskToExecute.taskAper = getMostPriorityAperiodicTask(readyList, numAperTasks);				
+				taskToExecute.taskAper = getMostPriorityAperiodicTask(readyList, numAperTasks);	//FIFO		
 				taskToExecute.type = aperiodic;
 				
 			} else if(checkPeriodicComputation(mostPriorityPeriodicTask)) {	//SENÃO, SE A TAREFA PERIODICA MAIS PRIORITARIA AINDA TIVER COMPUTAÇÃO
-
+				
 				taskToExecute.taskPer = mostPriorityPeriodicTask;
 				taskToExecute.type = periodic;
-			}
+			
+			} else {	//SENÃO EXECUTA A APERIODICA MESMO SEM COMPUTAÇÃO
+				
+				taskToExecute.taskPer = readyList->taskPer[0];	//DS
+				taskToExecute.taskAper = getMostPriorityAperiodicTask(readyList, numAperTasks);	//FIFO		
+				taskToExecute.type = aperiodic;
+			
+			} 
+			
 		} else if(checkPeriodicComputation(mostPriorityPeriodicTask)) {	//SENÃO, SE A TAREFA PERIODICA MAIS PRIORITARIA AINDA TIVER COMPUTAÇÃO
-
+			
 			taskToExecute.taskPer = mostPriorityPeriodicTask;
 			taskToExecute.type = periodic;
+		
+		} else { 	//IDLE
+			
+			taskToExecute.type = idle;
+			
 		}
 
 	} else if(checkPeriodicComputation(mostPriorityPeriodicTask)) {	//SENÃO, SE A TAREFA PERIODICA MAIS PRIORITARIA AINDA TIVER COMPUTAÇÃO
-
-		taskToExecute.taskPer = mostPriorityPeriodicTask;
+		
+		taskToExecute.taskPer = mostPriorityPeriodicTask;		
 		taskToExecute.type = periodic;
-	}
+	
+	} else {	//IDLE
+		
+		taskToExecute.type = idle;
+	} 
 
 	return taskToExecute;
 
@@ -272,7 +294,17 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 
 						printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grid[time], *numPreemp, *numCntSw);
 				break;
-
+			case idle:
+						ucpLoad(ucp, 26+1, '.', 1, 0);
+						ucpRun(ucp);
+						
+						grid[time] = '.';
+						*numPreemp = ucp->numPreemp;
+						*numCntSw = ucp->numContSwitch;	
+						
+						printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grid[time], *numPreemp, *numCntSw);
+				break;
+				
 			default:
 				break;
 
@@ -345,10 +377,10 @@ int main() {
 	    //strcpy(grade,"AAAABCBBBBAADAABBB..");
 
 	    /* SAIDA */
-	    /*
-	    for(i = 0; i < MAX_TIME+1; i++){
+	    
+	    for(i = 0; i < sim_time; i++){
 	    	printf("%c",grade[i]);
-	    }*/
+	    }
 	    printf("\n");
 	    printf("%u %u\n",numPreemp,numCntSw);
 	    printf("\n");
