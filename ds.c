@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <ctype.h>
 
 #define MAX_PER_TASKS 13
 #define MAX_APER_TASKS 13
@@ -104,7 +104,7 @@ TASK_PER getMostPriorityPeriodicTask(READY_LIST *readyList, unsigned int numPerT
 
 	//PEGA A TAREFA PERIODICACOM MAIOR PRIORIDADE, OU SEJA, A TAREFA COM O MENOR PERÍODO
 	for(i = 1; i < numPerTasks+1; i++) {
-		//printf("DEBUG DA PERIODICA MAIS PRIORITARIA: p %u, c %u\n", auxPerTask[i].p, readyList->taskPer[i].c);
+		
 		if(auxTask.p > auxPerTask[i].p && auxPerTask[i].p > 0 && readyList->taskPer[i].c > 0) {
 			
 			auxTask.p = auxPerTask[i].p;
@@ -112,8 +112,10 @@ TASK_PER getMostPriorityPeriodicTask(READY_LIST *readyList, unsigned int numPerT
 			auxTask.pid = auxPerTask[i].pid;
 			
 			auxTask.d = readyList->taskPer[i].d;
-			printf("DEBUG DEADLINE: %u\n", auxTask.d);
 			auxTask.c = readyList->taskPer[i].c;
+			/*if(auxTask.symbol == 'B' || auxTask.symbol == 'b')
+							printf("DEBUG DA PERIODICA MAIS PRIORITARIA: p %u, c %u\n", auxPerTask[i].p, readyList->taskPer[i].c);*/
+			
 		}		
 	}
 	
@@ -152,8 +154,6 @@ void updateAFifoAperiodic(READY_LIST *readyList, unsigned int numAperTasks, TASK
 			auxAperTask[i] = auxAperTask[i+1];	
 		}						
 	}
-
-	//printf("DEBUG COMPUTAAÇÃO APERIODICA: %u\n", readyList->taskAper[0].c);
 }
 
 int aperiodicArrival(READY_LIST *readyList, unsigned int numAperTasks, unsigned int time) {
@@ -257,7 +257,7 @@ TASK scheduler(READY_LIST *readyList, unsigned int time, unsigned int numPerTask
 			taskToExecute.type = periodic;
 		
 		} else { 	//IDLE
-			printf("DEBUG IDLE 1\n");
+			
 			taskToExecute.type = idle;
 			
 		}
@@ -268,7 +268,7 @@ TASK scheduler(READY_LIST *readyList, unsigned int time, unsigned int numPerTask
 		taskToExecute.type = periodic;
 	
 	} else {	//IDLE
-		printf("DEBUG IDLE 2\n");
+
 		taskToExecute.type = idle;
 	} 
 
@@ -285,18 +285,35 @@ int checkPeriodicPer(READY_LIST *readyList, unsigned int ind){
 	return 0;
 }
 
+
+//FAZER UPDATE A CADA FINAL DE COMPUTAÇÃO E NAO NO FINAL DO PERÍODO
+
 void updateTasksInformations(unsigned int time, READY_LIST *readyList, TASK_PER *auxPerTask, unsigned int simulationTime, unsigned int numPerTasks) {
 
 	unsigned int i;
 
-	for(i = 0; i < simulationTime; i++){
+	//printf("\nDEBUG UPDATETASK: %u\n\n", readyList->taskPer[2].c);
+
+	for(i = 0; i < numPerTasks+1; i++){
 		if(checkPeriodicPer(readyList, i)) { //SE O PERÍODO AINDA NAO ACABOU, DECREMENTA
+			//printf("DEBUG COMPUTAÇÕES: %u\n", readyList->taskPer[i].c);
 			readyList->taskPer[i].p--;	
 			
 		} else {	//SE ACABOU, COMEÇA NOVO PERÍODO
-				readyList->taskPer[i].c = auxPerTask[i].c;
-				readyList->taskPer[i].p = auxPerTask[i].p;
-				readyList->taskPer[i].d += auxPerTask[i].d; 
+				//printf("DEBUG COMPUTAÇÕES DEPOIS DE CADA PERÍODO: %u\n", readyList->taskPer[i].c);
+				
+
+				if(readyList->taskPer[i].c == 0){
+					readyList->taskPer[i].c = auxPerTask[i].c;
+					readyList->taskPer[i].p = auxPerTask[i].p;				
+					readyList->taskPer[i].d += auxPerTask[i].d; 	
+				
+				} else {
+					//printf("DEBUG NAO ACABOU A COMPUTAÇÃO DO %c: %u\n", readyList->taskPer[i].symbol, readyList->taskPer[i].c);
+					//readyList->taskPer[i].p = 1;	
+				}
+
+				//printf("\nDEBUG ESCRITA NO DEADLINE DA TEREFA %c: %u\n", auxPerTask[i].symbol, readyList->taskPer[i].d);
 		}
 	}
 }
@@ -313,19 +330,25 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 	ucp = ucpNew(MAX_TIME);
 
 	for(time = 0; time < simulationTime; time++) {	//RELÓGIO CONTANDO
-		printf("TIME: %u\n", time);
+		//printf("TIME: %u\n", time);
 		taskToExecute = scheduler(readyList, time, numPerTasks, numAperTasks, auxAperTask, auxPerTask);		//PEGA A TAREFA QUE SERÁ EXECUTADA
 		
 		switch(taskToExecute.type){
 			case periodic:
-
+						//printf("DEBUG DEADLINE TAREFA %c: %u\n", taskToExecute.taskPer.symbol, taskToExecute.taskPer.d);
 						ucpLoad(ucp, taskToExecute.taskPer.pid, taskToExecute.taskPer.symbol, taskToExecute.taskPer.c, taskToExecute.taskPer.d);
 						ucpRun(ucp);
 
 						readyList->taskPer[taskToExecute.taskPer.pid].c = ucp->comput;
+						//printf("DEBUG DENTRO DO PERIODIC!!: %u\n", readyList->taskPer[2].c);
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;
-						//printf("SYMBOL PERIODIC: %c, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskPer.symbol, *numPreemp, *numCntSw);						
+
+						/*if(ucp->grid[ucp->tempo-1] == tolower(ucp->symbol)){
+							//printf("DEBUG SIMBOLO DIFERENTE\n");
+							readyList->taskPer[taskToExecute.taskPer.pid].c = auxPerTask[taskToExecute.taskPer.pid].c;
+						}*/
+
 				break;
 			case aperiodic:
 						ucpLoad(ucp, taskToExecute.taskAper.pid, taskToExecute.taskAper.symbol, taskToExecute.taskAper.c, taskToExecute.taskPer.d);
@@ -361,7 +384,10 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 				break;
 
 		}
-				
+		
+	
+			//printf("DEBUG RUNSIMULATOR!!: %u\n", readyList->taskPer[2].c);
+	
 		updateTasksInformations(time, readyList, auxPerTask, simulationTime, numPerTasks);
 		
 	}
@@ -412,7 +438,8 @@ int main() {
         	scanf("%u%u%u",&perTasks[i].c,&perTasks[i].p,&perTasks[i].d);
 			perTasks[i].symbol = 'A' + (i-1);
 			perTasks[i].pid = i;
-			auxPerTask[i] = perTasks[i];			
+			auxPerTask[i] = perTasks[i];	
+			//printf("\nDEBUG DEADLINE INICIAL: %u\n", auxPerTask[i].d);		
     		fillReadyList(i, &readyList, periodic, perTasks[i], aperTasks[0]);
     		auxInd++;
     	}
