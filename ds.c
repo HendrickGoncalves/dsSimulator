@@ -103,7 +103,7 @@ TASK_PER getMostPriorityPeriodicTask(READY_LIST *readyList, unsigned int numPerT
 
 	//PEGA A TAREFA PERIODICACOM MAIOR PRIORIDADE, OU SEJA, A TAREFA COM O MENOR PERÍODO
 	for(i = 1; i < numPerTasks+1; i++) {
-		if(auxTask.p > (readyList->taskPer[i].p) && (readyList->taskPer[i].p) > 0 ) {
+		if(auxTask.p > (readyList->taskPer[i].p) && (readyList->taskPer[i].p) > 0 && readyList->taskPer[i].c > 1) {
 			auxTask = readyList->taskPer[i];
 		}		
 	}
@@ -229,7 +229,6 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 	ucp = ucpNew(MAX_TIME);
 
 	for(time = 0; time < simulationTime; time++) {	//RELÓGIO CONTANDO
-		
 		taskToExecute = scheduler(readyList, time, numPerTasks, numAperTasks);		//PEGA A TAREFA QUE SERÁ EXECUTADA
 		
 		//ucp = ucpNew(MAX_TIME);
@@ -243,16 +242,19 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						grid[time] = ucp->symbol;
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;
+						printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grid[time], *numPreemp, *numCntSw);						
 				break;
 			case aperiodic:
 						ucpLoad(ucp, taskToExecute.taskAper.pid, taskToExecute.taskAper.symbol, taskToExecute.taskPer.c, taskToExecute.taskPer.d);
 						ucpRun(ucp);
-
+						
 						readyList->taskAper[taskToExecute.taskAper.pid].c = ucp->comput;
 						readyList->taskPer[taskToExecute.taskPer.pid].c--;
 						grid[time] = ucp->symbol;
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
+
+						printf("GRID: %c, numPreemp: %u, numCntSw: %u\n",grid[time], *numPreemp, *numCntSw);
 				break;
 
 			default:
@@ -272,7 +274,7 @@ int main() {
 	unsigned int sim_time;	
 	unsigned int numPerTasks;
 	unsigned int numAperTasks;
-	int auxInd = -1;
+	int auxInd = 0;
 	
 	TASK_PER ds;
 	TASK_PER perTasks[MAX_PER_TASKS];
@@ -327,10 +329,13 @@ int main() {
 
 	    /* SAIDA */
 	    /*
-	    printf("%s\n",grade);
+	    for(i = 0; i < MAX_TIME+1; i++){
+	    	printf("%c",grade[i]);
+	    }*/
+	    printf("\n");
 	    printf("%u %u\n",numPreemp,numCntSw);
 	    printf("\n");
-  		*/
+  		
   }
   return 0;
 }
