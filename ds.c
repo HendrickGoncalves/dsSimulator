@@ -333,7 +333,8 @@ void updateTasksInformations(unsigned int time, READY_LIST *readyList, TASK_PER 
 void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *auxPerTask, TASK_APER *auxAperTask, unsigned int numPerTasks, unsigned int numAperTasks, char *grade, unsigned int *numPreemp, unsigned int *numCntSw) {
 
 	unsigned int time;
-
+	int idleFlag = 0;
+	int cntLocalSwitch = 0;
 	TASK taskToExecute;
 	
 	ucp_t *ucp;
@@ -351,15 +352,16 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						ucpRun(ucp);
 
 						readyList->taskPer[taskToExecute.taskPer.pid].c = ucp->comput;
-						//printf("DEBUG DENTRO DO PERIODIC!!: %u\n", readyList->taskPer[2].c);
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;
-						/*
-						if(ucp->grid[ucp->tempo-1] == tolower(ucp->symbol) && readyList->taskPer[taskToExecute.taskPer.pid].c == 0){
-							printf("DEBUG SIMBOLO DIFERENTE\n");
-							readyList->taskPer[taskToExecute.taskPer.pid].c = auxPerTask[taskToExecute.taskPer.pid].c;
-						}*/
 
+						if (ucp->grid[ucp->tempo-1] == tolower(ucp->symbol)) {
+							printf("\nSYMBOL DIFERENTE\n");
+							cntLocalSwitch++;	
+					
+						} 
+
+						printf("SYMBOL PERIODIC: %c, computation : %u, DEADLINE : %u, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskPer.symbol, readyList->taskPer[taskToExecute.taskPer.pid].c, readyList->taskPer[taskToExecute.taskPer.pid].d ,*numPreemp, *numCntSw);
 				break;
 			case aperiodic:
 						ucpLoad(ucp, taskToExecute.taskAper.pid, taskToExecute.taskAper.symbol, taskToExecute.taskAper.c, simulationTime);
@@ -379,7 +381,7 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
 
-						//printf("SYMBOL APERIODIC: %c, computation : %u, DEADLINE : %u, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskAper.symbol, readyList->taskAper[0].c, readyList->taskPer[0].d ,*numPreemp, *numCntSw);
+						printf("SYMBOL APERIODIC: %c, computation : %u, DEADLINE : %u, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskAper.symbol, readyList->taskAper[0].c, readyList->taskPer[0].d ,*numPreemp, *numCntSw);
 				break;
 			case idle:
 						ucpLoad(ucp, 26+1, '.', 1, 0);
@@ -387,8 +389,8 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
-
-						//printf("SYMBOL IDLE: %c, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskAper.symbol, *numPreemp, *numCntSw);
+						idleFlag = 1;
+						printf("SYMBOL IDLE: %c, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskAper.symbol, *numPreemp, *numCntSw);
 				break;
 				
 			default:
@@ -402,6 +404,9 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 		updateTasksInformations(time, readyList, auxPerTask, simulationTime, numPerTasks);
 		
 	}
+
+	*numCntSw = *numCntSw + cntLocalSwitch + idleFlag;
+	*numPreemp += idleFlag;
 
 	strcpy(grade, ucp->grid);
 
@@ -450,7 +455,6 @@ int main() {
 			perTasks[i].symbol = 'A' + (i-1);
 			perTasks[i].pid = i;
 			auxPerTask[i] = perTasks[i];	
-			//printf("\nDEBUG DEADLINE INICIAL: %u\n", auxPerTask[i].d);		
     		fillReadyList(i, &readyList, periodic, perTasks[i], aperTasks[0]);
     		auxInd++;
     	}
@@ -467,6 +471,7 @@ int main() {
 
     	runSimulator(sim_time, &readyList, auxPerTask, auxAperTask, numPerTasks, numAperTasks, grade, &numPreemp, &numCntSw);
     	auxInd = 0;
+
 	    /* SAIDA */
 	    
 	    printf("%s\n", grade);
