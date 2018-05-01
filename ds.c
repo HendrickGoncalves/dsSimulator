@@ -54,15 +54,33 @@ typedef struct {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void resetSimulator(READY_LIST *readyList, char *grid, unsigned int *numPreemp, unsigned int *numCntSw) {
+void resetSimulator(READY_LIST *readyList, char *grid, unsigned int *numPreemp, unsigned int *numCntSw, TASK_PER *taskPer, TASK_APER *taskAper, TASK_PER *auxPerTask, TASK_APER *auxAperTask) {
 	
 	unsigned int i;
+
+	for(i = 0; i < MAX_PER_TASKS; i++) {
+		taskPer[i].c = 0;
+		auxPerTask[i].c = 0;
+		taskPer[i].p = 0;
+		auxPerTask[i].p = 0;
+		taskPer[i].d = 0;
+		auxPerTask[i].d = 0;
+	}
 
 	for(i = 0; i < MAX_PER_TASKS+1; i++) {
 		readyList->taskPer[i].c = 0;
 		readyList->taskPer[i].p = 0;
 		readyList->taskPer[i].d = 0;
 	}
+
+
+	for(i = 0; i < MAX_APER_TASKS; i++) {
+		taskAper[i].a = 0;
+		auxAperTask[i].a = 0;
+		taskAper[i].c = 0;
+		auxAperTask[i].c = 0;
+	}
+
 	
 	for(i = 0; i < MAX_APER_TASKS; i++) {
 		readyList->taskAper[i].a = 0;
@@ -300,19 +318,12 @@ void updateTasksInformations(unsigned int time, READY_LIST *readyList, TASK_PER 
 			readyList->taskPer[i].p--;	
 			
 		} else {	//SE ACABOU, COMEÇA NOVO PERÍODO
-				//printf("DEBUG COMPUTAÇÕES DEPOIS DE CADA PERÍODO: %u\n", readyList->taskPer[i].c);
-				
-
 				if(readyList->taskPer[i].c == 0){
 					readyList->taskPer[i].c = auxPerTask[i].c;
 					readyList->taskPer[i].p = auxPerTask[i].p;				
 					readyList->taskPer[i].d += auxPerTask[i].d; 	
 				
-				} else {
-					//printf("DEBUG NAO ACABOU A COMPUTAÇÃO DO %c: %u\n", readyList->taskPer[i].symbol, readyList->taskPer[i].c);
-					//readyList->taskPer[i].p = 1;	
-				}
-
+				} 
 				//printf("\nDEBUG ESCRITA NO DEADLINE DA TEREFA %c: %u\n", auxPerTask[i].symbol, readyList->taskPer[i].d);
 		}
 	}
@@ -343,15 +354,15 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						//printf("DEBUG DENTRO DO PERIODIC!!: %u\n", readyList->taskPer[2].c);
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;
-
-						/*if(ucp->grid[ucp->tempo-1] == tolower(ucp->symbol)){
-							//printf("DEBUG SIMBOLO DIFERENTE\n");
+						/*
+						if(ucp->grid[ucp->tempo-1] == tolower(ucp->symbol) && readyList->taskPer[taskToExecute.taskPer.pid].c == 0){
+							printf("DEBUG SIMBOLO DIFERENTE\n");
 							readyList->taskPer[taskToExecute.taskPer.pid].c = auxPerTask[taskToExecute.taskPer.pid].c;
 						}*/
 
 				break;
 			case aperiodic:
-						ucpLoad(ucp, taskToExecute.taskAper.pid, taskToExecute.taskAper.symbol, taskToExecute.taskAper.c, taskToExecute.taskPer.d);
+						ucpLoad(ucp, taskToExecute.taskAper.pid, taskToExecute.taskAper.symbol, taskToExecute.taskAper.c, simulationTime);
 						ucpRun(ucp);
 
 						readyList->taskAper[0].c = ucp->comput;
@@ -427,7 +438,7 @@ int main() {
        		break;
 		}
     	
-    	resetSimulator(&readyList, grade, &numPreemp, &numCntSw);
+    	resetSimulator(&readyList, grade, &numPreemp, &numCntSw, perTasks, aperTasks ,auxPerTask, auxAperTask);
 
     	scanf("%u%u%u",&ds.c,&ds.p,&ds.d);
     	ds.pid = 0;
@@ -455,7 +466,7 @@ int main() {
     
 
     	runSimulator(sim_time, &readyList, auxPerTask, auxAperTask, numPerTasks, numAperTasks, grade, &numPreemp, &numCntSw);
-
+    	auxInd = 0;
 	    /* SAIDA */
 	    
 	    printf("%s\n", grade);
