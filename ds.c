@@ -49,7 +49,6 @@ void resetSimulator(READY_LIST *readyList, char *grid, unsigned int *numPreemp, 
 		
 }
 
-
 void fillReadyList(unsigned int ind, READY_LIST *readyList, int type, TASK_PER taskPer, TASK_APER taskAper) {
 	
 	switch(type) {
@@ -88,11 +87,9 @@ TASK_PER getMostPriorityPeriodicTask(READY_LIST *readyList, unsigned int numPerT
 	}
 	
 	if(auxTask.p == MAX_PERIOD) {
-	//	auxTask.p = 0;
 		auxTask.c = 0;
 	}
-	
-	//printf("DEBUG PERIODO DO MAIS PRIORITARIO: %u\n", auxTask.p);
+
 	return auxTask;
 
 }
@@ -253,9 +250,6 @@ int checkPeriodicPer(READY_LIST *readyList, unsigned int ind){
 	return 0;
 }
 
-
-//FAZER UPDATE A CADA FINAL DE COMPUTAÇÃO E NAO NO FINAL DO PERÍODO
-
 void updateTasksInformations(unsigned int time, READY_LIST *readyList, TASK_PER *auxPerTask, unsigned int simulationTime, unsigned int numPerTasks) {
 
 	unsigned int i;
@@ -280,7 +274,6 @@ void updateTasksInformations(unsigned int time, READY_LIST *readyList, TASK_PER 
 
 }
 
-
 void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *auxPerTask, TASK_APER *auxAperTask, unsigned int numPerTasks, unsigned int numAperTasks, char *grade, unsigned int *numPreemp, unsigned int *numCntSw) {
 
 	unsigned int time;
@@ -292,8 +285,7 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 	
 	ucp = ucpNew(MAX_TIME);
 
-	for(time = 0; time < simulationTime; time++) {	//RELÓGIO CONTANDO
-		//printf("TIME: %u --- ", time);
+	for(time = 0; time < simulationTime; time++) {	//RELÓGIO CONTANDO		
 		taskToExecute = scheduler(readyList, time, numPerTasks, numAperTasks, auxAperTask, auxPerTask);		//PEGA A TAREFA QUE SERÁ EXECUTADA
 		
 		switch(taskToExecute.type){
@@ -431,6 +423,7 @@ int main() {
 	    printf("\n");
   		
   }
+  
   return 0;
 }
 
