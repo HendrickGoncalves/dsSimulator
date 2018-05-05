@@ -1,51 +1,11 @@
-#include "ucp.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
 
-#define MAX_PER_TASKS 13
-#define MAX_APER_TASKS 13
-#define MAX_TIME 100000
-#define MAX_PERIOD 100000
-#define MAX_ARRIVE 100000
-
-enum TYPE_TASK {
-	periodic,
-	aperiodic,
-	idle
-};
-
-typedef struct {
-  unsigned int c;
-  unsigned int p;
-  unsigned int d;
-  int pid;
-  char symbol;
-} TASK_PER;
-
-typedef struct {
-  unsigned int a;
-  unsigned int c;
-  int pid;
-  char symbol;
-} TASK_APER;
-
-typedef struct {
-	TASK_APER taskAper;
-	TASK_PER taskPer;
-	int type;
-} TASK;
-
-typedef struct {
-	TASK_APER taskAper[MAX_APER_TASKS];
-	TASK_PER taskPer[MAX_PER_TASKS+1];
-
-} READY_LIST;
-
-
-int waiting = 0;
+#include "ucp.h"
+#include "ds.h"
 
 void resetSimulator(READY_LIST *readyList, char *grid, unsigned int *numPreemp, unsigned int *numCntSw, TASK_PER *taskPer, TASK_APER *taskAper, TASK_PER *auxPerTask, TASK_APER *auxAperTask) {
 	
