@@ -39,7 +39,7 @@ void ucpLoad(ucp_t *ucp, int pid,char symbol, int c,int deadline)
 		ucp->comput = c;
 	}
 	else	{
-		if	(pid != ucp->pid) {
+		if	(pid != ucp->pid ){//|| tolower(symbol) == ucp->grid[ucp->tempo-1] ) {
 			ucp->pid = pid;
 			ucp->numContSwitch++;
 			if	(ucp->comput>0)
