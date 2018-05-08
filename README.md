@@ -1,2 +1,2 @@
-# dsSimulator
-DS simulator
+# DS
+Simulator
