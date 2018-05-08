@@ -277,7 +277,6 @@ void updateTasksInformations(unsigned int time, READY_LIST *readyList, TASK_PER 
 void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *auxPerTask, TASK_APER *auxAperTask, unsigned int numPerTasks, unsigned int numAperTasks, char *grade, unsigned int *numPreemp, unsigned int *numCntSw) {
 
 	unsigned int time;
-	int idleFlag = 0;
 	int cntLocalSwitch = 0;
 	TASK taskToExecute;
 	
@@ -285,7 +284,7 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 	
 	ucp = ucpNew(MAX_TIME);
 
-	for(time = 0; time < simulationTime; time++) {	//RELÓGIO CONTANDO		
+	for(time = 0; time < simulationTime+1; time++) {	//RELÓGIO CONTANDO		
 		taskToExecute = scheduler(readyList, time, numPerTasks, numAperTasks, auxAperTask, auxPerTask);		//PEGA A TAREFA QUE SERÁ EXECUTADA
 		
 		switch(taskToExecute.type){
@@ -331,9 +330,6 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
-						
-						if(time == simulationTime-1)
-							idleFlag = 1;
 
 						//printf("SYMBOL IDLE: %c, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskAper.symbol, *numPreemp, *numCntSw);
 				break;
@@ -347,8 +343,7 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 		
 	}
 
-	*numCntSw = *numCntSw + cntLocalSwitch + idleFlag;
-	*numPreemp += idleFlag;
+	*numCntSw = *numCntSw + cntLocalSwitch;
 
 	strcpy(grade, ucp->grid);
 
@@ -416,8 +411,12 @@ int main() {
 
 	    /* SAIDA */
 	    
-	    printf("%s\n", grade);
+	    //printf("%s\n", grade);
 	    
+    	for(i = 0; i < sim_time; i++){
+    		printf("%c", grade[i]);
+    	}
+
 	    printf("\n");
 	    printf("%u %u\n",numPreemp,numCntSw);
 	    printf("\n");
@@ -426,4 +425,3 @@ int main() {
   
   return 0;
 }
-
