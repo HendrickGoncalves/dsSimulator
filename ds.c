@@ -278,18 +278,22 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 
 	unsigned int time;
 	int cntLocalSwitch = 0;
-	//int 
+	int cntSpecialCase = 0;
 	TASK taskToExecute;
 	
 	ucp_t *ucp;
 	
 	ucp = ucpNew(MAX_TIME);
 
-	for(time = 0; time < simulationTime+1; time++) {	//RELÓGIO CONTANDO		
+	for(time = 0; time < simulationTime+1; time++) {	//RELÓGIO CONTANDO				
 		taskToExecute = scheduler(readyList, time, numPerTasks, numAperTasks, auxAperTask, auxPerTask);		//PEGA A TAREFA QUE SERÁ EXECUTADA
 		
 		switch(taskToExecute.type){
 			case periodic:
+						if ((taskToExecute.taskPer.pid == ucp->pid && ucp->deadline != taskToExecute.taskPer.d) && ucp->grid[ucp->tempo-1] != tolower(ucp->symbol))  {
+							cntSpecialCase++;
+						}
+
 						ucpLoad(ucp, taskToExecute.taskPer.pid, taskToExecute.taskPer.symbol, taskToExecute.taskPer.c, taskToExecute.taskPer.d);
 						ucpRun(ucp);
 
@@ -301,7 +305,6 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 							cntLocalSwitch++;					
 						} 	
 
-						printf("SYMBOL PERIODIC: %c, computation : %u, DEADLINE : %u, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskPer.symbol, readyList->taskPer[taskToExecute.taskPer.pid].c, readyList->taskPer[taskToExecute.taskPer.pid].d ,*numPreemp, *numCntSw);
 				break;
 			case aperiodic:
 						ucpLoad(ucp, taskToExecute.taskAper.pid, taskToExecute.taskAper.symbol, taskToExecute.taskAper.c, simulationTime);
@@ -323,7 +326,6 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
 
-						printf("SYMBOL APERIODIC: %c, computation : %u, DEADLINE : %u, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskAper.symbol, readyList->taskAper[0].c, readyList->taskPer[0].d ,*numPreemp, *numCntSw);
 				break;
 			case idle:
 						ucpLoad(ucp, (MAX_PER_TASKS+MAX_APER_TASKS+1), '.', simulationTime, simulationTime);
@@ -332,7 +334,6 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 						*numPreemp = ucp->numPreemp;
 						*numCntSw = ucp->numContSwitch;	
 
-						printf("SYMBOL IDLE: %c, numPreemp: %u, numCntSw: %u\n",taskToExecute.taskAper.symbol, *numPreemp, *numCntSw);
 				break;
 				
 			default:
@@ -344,8 +345,7 @@ void runSimulator(unsigned int simulationTime, READY_LIST *readyList, TASK_PER *
 		
 	}
 
-	*numCntSw = *numCntSw + cntLocalSwitch;
-	//printf("DEBUG TC: %u, %u\n", *numCntSw, cntLocalSwitch);
+	*numCntSw = *numCntSw + cntLocalSwitch + cntSpecialCase;
 	strcpy(grade, ucp->grid);
 
 	ucpFree(&ucp);	
@@ -411,8 +411,6 @@ int main() {
     	auxInd = 0;
 
 	    /* SAIDA */
-	    
-	    //printf("%s\n", grade);
 	    
     	for(i = 0; i < sim_time; i++){
     		printf("%c", grade[i]);
